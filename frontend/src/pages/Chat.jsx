@@ -226,6 +226,7 @@ function Chat() {
               />
               <button
                 onClick={handleConversationCreate}
+                disabled={!conversation.trim()}
                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2 rounded-lg transition duration-200 shadow-sm"
               >
                 Create Conversation
