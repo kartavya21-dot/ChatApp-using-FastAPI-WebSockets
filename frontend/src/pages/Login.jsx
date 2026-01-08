@@ -19,6 +19,7 @@ const Login = () => {
       setIsUser(true);
     } catch (e) {
       console.error("Error: ", e);
+      alert(e);
     }
   };
 
@@ -30,7 +31,7 @@ const Login = () => {
     try {
       const response = await login(email, password);
       localStorage.setItem("user", response.user);
-      // window.location.reload();
+      window.location.reload();
     } catch (e) {
       console.error("Error: ", e);
     }
@@ -96,7 +97,7 @@ const Login = () => {
 
           <button
             type="button"
-            onClick={loginUser}
+            onClick={isUser ? loginUser : registerUser}
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg transition duration-200 shadow-md hover:shadow-lg"
           >
             {isUser ? "Login" : "Register"}

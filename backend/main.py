@@ -144,6 +144,17 @@ def get_current_user(
 
 @app.post("/register")
 def register(data: RegisterSchema, session: SessionDep):
+
+    existing_user = session.exec(
+        select(User).where(User.email == data.email)
+    ).first()
+
+    if existing_user:
+        raise HTTPException(
+            status_code=409,
+            detail="User already exists"
+        )
+
     if data.name == "" or data.email == "" or data.password == "":
         return HTTPException(status_code=403, detail="Fill all the details")
     try:
@@ -233,8 +244,6 @@ async def websocket_(websocket: WebSocket, _conversation_id: int, _user_id: int)
         connections[_conversation_id] = []
 
     connections[_conversation_id].append(websocket)
-    print(websocket)
-    print(type(websocket))
     try:
         while True:
             msg = await websocket.receive_text()

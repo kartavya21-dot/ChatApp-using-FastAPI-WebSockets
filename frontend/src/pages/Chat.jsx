@@ -48,6 +48,15 @@ function Chat() {
     }
   };
 
+  const logoutUser = async () => {
+    try {
+      await logout();
+      window.location.reload();
+    } catch (e) {
+      alert("Cannot logout");
+    }
+  }
+
   const getPreviousMessage = async (cid) => {
     if (!cid) return;
 
@@ -135,7 +144,7 @@ function Chat() {
             <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Chatty</h1>
           </div>
           <button
-            onClick={logout}
+            onClick={logoutUser}
             className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition duration-200"
           >
             <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
