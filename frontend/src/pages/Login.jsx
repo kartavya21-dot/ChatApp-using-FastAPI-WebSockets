@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { login, register } from "../api/auth";
 
 const Login = () => {
@@ -26,8 +26,9 @@ const loginUser = async (e) => {
     }
     e.preventDefault();
     try {
-        await login(email, password);
-        window.location.reload();
+        const response = await login(email, password);
+        localStorage.setItem("user", response.user);
+        // window.location.reload();
     } catch (e) {
       console.error("Error: ", e);
     }

@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import axios from "axios";
-import { logout } from "../api/auth";
+import { getCurrentUser, logout } from "../api/auth";
 import { getConversation, getMessages, newConversation } from "../api/chat";
 
 const be = "localhost:8000";
 function Chat() {
+  const [user, setUser] = useState();
   const [conversation, setConversation] = useState("");
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
@@ -23,6 +24,15 @@ function Chat() {
     }
   };
 
+  const getUser = async () => {
+    try {
+      const response = await getCurrentUser();
+      setUser(response);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handleConversationList = async () => {
     try {
       const response = await getConversation();
@@ -33,23 +43,25 @@ function Chat() {
   };
 
   const getPreviousMessage = async (cid) => {
-  if (!cid) return;  
+    if (!cid) return;
 
-  try {
-    const response = await getMessages(cid); 
-    if (Array.isArray(response)) {
-      setMessages(response);
-    } else {
-      console.warn("API did not return an array:", response);
-      setMessages([]); 
+    try {
+      const response = await getMessages(cid);
+      if (Array.isArray(response)) {
+        console.log("API return an array:", response);
+        setMessages(response);
+      } else {
+        console.warn("API did not return an array:", response);
+        setMessages([]);
+      }
+    } catch (error) {
+      console.error(error);
+      setMessages([]);
     }
-  } catch (error) {
-    console.error(error);
-    setMessages([]); 
-  }
-};
+  };
 
   useEffect(() => {
+    getUser();
     handleConversationList();
   }, []);
 
@@ -57,17 +69,18 @@ function Chat() {
     console.log("Selected Conver: ", selectedConversation);
   }, [selectedConversation]);
 
-  // useEffect(() => {
-  //   ws.current = new WebSocket(
-  //     `ws://localhost:8000/ws?_conversation_id=${selectedConversation?.id}&_user_id=1`
-  //   );
+  useEffect(() => {
+    ws.current = new WebSocket(
+      `ws://localhost:8000/ws?_conversation_id=${selectedConversation?.id}&_user_id=${user}`
+    );
 
-  //   ws.current.onmessage = (event) => {
-  //     setMessages((prev) => [...prev, event.data]);
-  //   };
+    ws.current.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      setMessages((prev) => [...prev, msg]);
+    };
 
-  //   return () => ws.current.close();
-  // }, [selectedConversation]);
+    return () => ws.current.close();
+  }, [selectedConversation]);
 
   useEffect(() => {
     console.log("Selected Conver: ", selectedConversation);
@@ -105,19 +118,29 @@ function Chat() {
         <div className="flex flex-col">
           <h1>Conversation: {selectedConversation?.name}</h1>
           <div>
-            {Array.isArray(messages) &&
-              messages.map((msg, ind) => {
-                return <div key={ind}>{msg.id}</div>;
-              })}
+            {messages.map((msg, ind) => {
+              return (
+                <div key={ind}>
+                  {msg.user ? msg.user.name : ""} - {msg.message}
+                </div>
+              );
+            })}
           </div>
-          {/* <div className="flex">
+          <div className="flex">
             <input
               placeholder="Enter your message"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
             />
-            <button onClick={() => ws.current.send(message)}>Send</button>
-          </div> */}
+            <button
+              onClick={() => {
+                ws.current.send(message);
+                setMessage("");
+              }}
+            >
+              Send
+            </button>
+          </div>
         </div>
       )}
     </div>

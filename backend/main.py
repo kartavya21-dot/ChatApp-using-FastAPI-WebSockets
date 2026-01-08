@@ -6,6 +6,7 @@ from typing import Annotated, List, Optional
 from datetime import datetime
 from contextlib import asynccontextmanager
 from jose import jwt
+import json
 from auth import (
     hash_password,
     verify_password,
@@ -69,7 +70,8 @@ class MessagePublic(SQLModel):
     created_at: datetime
     message: str
     conversation_id: int
-    user_id: int
+    user: UserPublic 
+
 
 
 class LoginSchema(SQLModel):
@@ -132,6 +134,8 @@ def get_current_user(creds: HTTPAuthorizationCredentials = Depends(security)):
 
 @app.post("/register")
 def register(data: RegisterSchema, session: SessionDep):
+    if data.name == "" or data.email == "" or data.password == "":
+        return HTTPException(status_code=403, detail="Fill all the details")
     try:
         db_data = User(
             name= data.name,
@@ -167,7 +171,7 @@ def login(data: LoginSchema, response: Response, session: SessionDep):
         path="/refresh",
     )
 
-    return {"access_token": access}
+    return {"access_token": access, "user": user}
 
 
 @app.post("/refresh")
@@ -203,9 +207,11 @@ def get_messages(session: SessionDep, conversation_id: int, user_id: int = Depen
     return session.exec(
         select(Message)
         .where(Message.conversation_id == conversation_id)
-        .where(Message.user_id == user_id)
     ).all()
 
+@app.get("/me")
+def get_me(current_user = Depends(get_current_user)):
+    return current_user
 
 connections: dict[int, list[WebSocket]] = {}
 
@@ -216,8 +222,9 @@ async def websocket_(websocket: WebSocket, _conversation_id: int, _user_id: int)
     if _conversation_id not in connections:
         connections[_conversation_id] = []
 
-    connections[_conversation_id].append[websocket]
-
+    connections[_conversation_id].append(websocket)
+    print(websocket)
+    print(type(websocket))
     try:
         while True:
             msg = await websocket.receive_text()
@@ -229,9 +236,24 @@ async def websocket_(websocket: WebSocket, _conversation_id: int, _user_id: int)
             with Session(engine) as session:
                 session.add(db_msg)
                 session.commit()
+                session.refresh(db_msg)
+                # because web socket only sends data in text or bytes
+                payload = {
+                    "id": db_msg.id,
+                    "message": db_msg.message,
+                    "conversation_id": db_msg.conversation_id,
+                    "user": {
+                        "id": db_msg.user_id,
+                        "name": session.exec(
+                            select(User.name).where(User.id == db_msg.user_id)
+                        ).first()
+                    },
+                    "created_at": db_msg.created_at.isoformat(),
+                }
 
             for client in connections[_conversation_id]:
-                await client.send_text(msg)
+                await client.send_text(json.dumps(payload))
+
 
     except WebSocketDisconnect:
-        connections.remove(websocket)
+        connections[_conversation_id].remove(websocket)
