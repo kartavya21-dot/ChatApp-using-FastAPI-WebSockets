@@ -6,6 +6,7 @@ from typing import Annotated, List, Optional
 from datetime import datetime
 from contextlib import asynccontextmanager
 from jose import jwt
+import os
 import json
 from auth import (
     hash_password,
@@ -15,6 +16,9 @@ from auth import (
     SECRET_KEY,
     ALGORITHM,
 )
+from dotenv import load_dotenv
+load_dotenv()
+
 
 
 class Message(SQLModel, table=True):
@@ -83,13 +87,9 @@ class RegisterSchema(SQLModel):
     email: str
     password: str
 
+db_url = os.getenv('DATABASE_URL')
 
-sqlite_file_name = "database.db"
-sqlite_url = f"sqlite:///{sqlite_file_name}"
-
-connect_args = {"check_same_thread": False}
-engine = create_engine(sqlite_url, connect_args=connect_args)
-
+engine = create_engine(db_url, echo=False)
 
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
@@ -141,6 +141,9 @@ def get_current_user(
     except:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+@app.get("/")
+def health():
+    return {"status": "ok"}
 
 @app.post("/register")
 def register(data: RegisterSchema, session: SessionDep):
