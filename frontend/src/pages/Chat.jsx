@@ -4,7 +4,8 @@ import { getCurrentUser, logout } from "../api/auth";
 import { getConversation, getMessages, newConversation } from "../api/chat";
 import { MessageCircle, Send, LogOut, Users, Menu, X } from "lucide-react";
 
-const be = "localhost:8000";
+const WS_URL = import.meta.env.VITE_WS_URL;
+
 function Chat() {
   const [user, setUser] = useState();
   const [conversation, setConversation] = useState("");
@@ -97,7 +98,7 @@ function Chat() {
     if (!selectedConversation || !user) return;
 
     ws.current = new WebSocket(
-      `ws://localhost:8000/ws?_conversation_id=${selectedConversation?.id}&_user_id=${user.id}`
+      `${WS_URL}/ws?_conversation_id=${selectedConversation?.id}&_user_id=${user.id}`
     );
 
     ws.current.onmessage = (event) => {
