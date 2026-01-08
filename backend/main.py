@@ -123,14 +123,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def get_current_user(creds: HTTPAuthorizationCredentials = Depends(security)):
+def get_current_user(
+    creds: HTTPAuthorizationCredentials = Depends(security),
+    session: Session = Depends(get_session),
+):
     try:
         payload = jwt.decode(creds.credentials, SECRET_KEY, algorithms=[ALGORITHM])
         if payload.get("type") != "access":
             raise HTTPException(status_code=401)
-        return payload["sub"]
+
+        user = session.get(User, int(payload["sub"]))
+        if not user:
+            raise HTTPException(status_code=401)
+
+        return user
+
     except:
         raise HTTPException(status_code=401, detail="Invalid token")
+
 
 @app.post("/register")
 def register(data: RegisterSchema, session: SessionDep):
@@ -171,7 +181,7 @@ def login(data: LoginSchema, response: Response, session: SessionDep):
         path="/refresh",
     )
 
-    return {"access_token": access, "user": user}
+    return {"access_token": access, "user": UserPublic.model_validate(user)}
 
 
 @app.post("/refresh")

@@ -20,13 +20,6 @@ function App() {
 
   return (
       <>
-        <button
-          type="button"
-          className="p-5 text-lg border-red-500 border-solid border-2 rounded-md cursor-pointer"
-          onClick={logoutUser}
-        >
-          Logout
-        </button>
         <Chat />
       </>
   );
