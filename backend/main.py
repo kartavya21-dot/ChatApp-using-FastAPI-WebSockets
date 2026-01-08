@@ -71,6 +71,7 @@ class MessageCreate(SQLModel):
 
 
 class MessagePublic(SQLModel):
+    id: int
     created_at: datetime
     message: str
     conversation_id: int
@@ -193,7 +194,6 @@ def login(data: LoginSchema, session: SessionDep):
         "user": UserPublic.model_validate(user),
     }
 
-
 @app.post("/refresh")
 def refresh(data: RefreshSchema):
     try:
@@ -232,6 +232,27 @@ def get_messages(session: SessionDep, conversation_id: int, user_id: int = Depen
         select(Message)
         .where(Message.conversation_id == conversation_id)
     ).all()
+
+
+@app.delete("/message/{message_id}", dependencies=[Depends(get_current_user)])
+def delete_message(
+    message_id: int,
+    session: SessionDep,
+    current_user: User = Depends(get_current_user),
+):
+    message = session.get(Message, message_id)
+
+    if not message:
+        raise HTTPException(status_code=404, detail="Message not found")
+
+    if message.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+    session.delete(message)
+    session.commit()
+
+    return {"detail": "Message deleted successfully"}
+
 
 @app.get("/me")
 def get_me(current_user = Depends(get_current_user)):
