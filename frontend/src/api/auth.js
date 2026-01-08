@@ -6,13 +6,19 @@ export const register = async (name, email, password) => {
 };
 
 export const login = async (email, password) => {
-  const response = await api.post("/login", { email, password });
-  localStorage.setItem("accessToken", response.data.access_token);
-  return response.data;
+  const res = await api.post("/login", { email, password });
+
+  localStorage.setItem("accessToken", res.data.access_token);
+  localStorage.setItem("refreshToken", res.data.refresh_token);
+  localStorage.setItem("user", JSON.stringify(res.data.user));
+
+  return res.data.user;
 };
 
 export const logout = () => {
   localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("user");
 };
 
 export const getCurrentUser = async () => {

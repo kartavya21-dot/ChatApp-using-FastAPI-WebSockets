@@ -13,24 +13,34 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
-
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
-    const originalRequest = error.config;
+    const original = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
+    if (error.response?.status === 401 && !original._retry) {
+      original._retry = true;
+
+      const refreshToken = localStorage.getItem("refreshToken");
+      if (!refreshToken) {
+        logout();
+        return Promise.reject(error);
+      }
 
       try {
-        const res = await api.post("/refresh");
+        const res = await api.post("/refresh", {
+          refresh_token: refreshToken,
+        });
+
         localStorage.setItem("accessToken", res.data.access_token);
-        originalRequest.headers.Authorization =
+        original.headers.Authorization =
           `Bearer ${res.data.access_token}`;
-        return api(originalRequest);
+
+        return api(original);
       } catch {
-        localStorage.removeItem("accessToken");
+        logout();
         window.location.href = "/";
+        return Promise.reject(error);
       }
     }
 

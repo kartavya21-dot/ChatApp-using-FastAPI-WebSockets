@@ -76,7 +76,8 @@ class MessagePublic(SQLModel):
     conversation_id: int
     user: UserPublic 
 
-
+class RefreshSchema(SQLModel):
+    refresh_token: str
 
 class LoginSchema(SQLModel):
     email: str
@@ -175,43 +176,41 @@ def register(data: RegisterSchema, session: SessionDep):
         return {"Cannot Create user"}
 
 @app.post("/login")
-def login(data: LoginSchema, response: Response, session: SessionDep):
-    user = session.exec(select(User).where(User.email == data.email)).first()
+def login(data: LoginSchema, session: SessionDep):
+    user = session.exec(
+        select(User).where(User.email == data.email)
+    ).first()
 
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid Credantial")
-
-    if not verify_password(data.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Not a User")
+    if not user or not verify_password(data.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
     access = create_access_token(str(user.id))
     refresh = create_refresh_token(str(user.id))
 
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh,
-        httponly=True,
-        secure=True,
-        samesite="none",
-        path="/refresh",
-    )
-
-    return {"access_token": access, "user": UserPublic.model_validate(user)}
+    return {
+        "access_token": access,
+        "refresh_token": refresh,
+        "user": UserPublic.model_validate(user),
+    }
 
 
 @app.post("/refresh")
-def refresh(request: Request):
-    token = request.cookies.get("refresh_token")
+def refresh(data: RefreshSchema):
+    try:
+        payload = jwt.decode(
+            data.refresh_token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
 
-    if not token:
-        raise HTTPException(status_code=401)
+        if payload.get("type") != "refresh":
+            raise HTTPException(status_code=401)
 
-    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        new_access = create_access_token(payload["sub"])
+        return {"access_token": new_access}
 
-    if payload.get("type") != "refresh":
-        raise HTTPException(status_code=401)
-
-    return {"access_token": create_access_token(payload["sub"])}
+    except:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
 
 @app.post("/conversation", response_model=ConversationPublic, dependencies=[Depends(get_current_user)])
 def create_conversation(session: SessionDep, conversation: ConversationCreate):
