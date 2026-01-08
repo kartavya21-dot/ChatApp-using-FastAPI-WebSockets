@@ -191,7 +191,7 @@ def login(data: LoginSchema, response: Response, session: SessionDep):
         value=refresh,
         httponly=True,
         secure=True,
-        samesite="strict",
+        samesite="none",
         path="/refresh",
     )
 
