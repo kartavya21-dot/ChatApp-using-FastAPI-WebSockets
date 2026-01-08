@@ -56,7 +56,7 @@ function Chat() {
     } catch (e) {
       alert("Cannot logout");
     }
-  }
+  };
 
   const getPreviousMessage = async (cid) => {
     if (!cid) return;
@@ -81,7 +81,7 @@ function Chat() {
     getUser();
     handleConversationList();
   }, []);
-  
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -142,7 +142,9 @@ function Chat() {
               )}
             </button>
             <MessageCircle className="w-6 h-6 sm:w-8 sm:h-8 text-indigo-600" />
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Chatty</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
+              Chatty
+            </h1>
           </div>
           <button
             onClick={logoutUser}
@@ -170,9 +172,13 @@ function Chat() {
             w-80 bg-white border-r border-gray-200 flex flex-col
             transform transition-transform duration-300 ease-in-out
             lg:transform-none
-            ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+            ${
+              isSidebarOpen
+                ? "translate-x-0"
+                : "-translate-x-full lg:translate-x-0"
+            }
           `}
-          style={{ top: '73px', height: 'calc(100vh - 73px)' }}
+          style={{ top: "73px", height: "calc(100vh - 73px)" }}
         >
           {/* New Conversation Form */}
           <div className="p-4 border-b border-gray-200">
@@ -219,7 +225,9 @@ function Chat() {
                       <span className="font-medium text-gray-800 truncate">
                         {conv.name}
                       </span>
-                      <span className="text-xs text-gray-500 flex-shrink-0 ml-2">#{conv.id}</span>
+                      <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
+                        #{conv.id}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -244,8 +252,11 @@ function Chat() {
 
               {/* Messages Area */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-                {messages.map((msg) => (
-                  <div key={msg.id} className="flex items-start space-x-2 sm:space-x-3">
+                {messages.map((msg, ind) => (
+                  <div
+                    key={msg.id || ind}
+                    className="flex items-start space-x-2 sm:space-x-3"
+                  >
                     <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
                       {msg.user?.name?.charAt(0) || "?"}
                     </div>
@@ -255,7 +266,20 @@ function Chat() {
                           {msg.user?.name || "Anonymous"}
                         </span>
                         <span className="text-xs text-gray-500 flex-shrink-0">
-                          {msg.created_at || new Date().toLocaleTimeString()}
+                          <span className="text-xs text-gray-500 flex-shrink-0">
+                            <span className="text-xs text-gray-500 flex-shrink-0">
+                              {msg.created_at
+                                ? new Date(
+                                    msg.created_at + "Z"
+                                  ).toLocaleTimeString("en-IN", {
+                                    timeZone: "Asia/Kolkata",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    hour12: true,
+                                  })
+                                : ""}
+                            </span>
+                          </span>
                         </span>
                       </div>
                       <p className="mt-1 text-sm sm:text-base text-gray-700 bg-gray-50 rounded-lg px-3 sm:px-4 py-2 break-words">
@@ -286,7 +310,10 @@ function Chat() {
                   />
                   <button
                     onClick={() => {
-                      if (ws.current?.readyState === WebSocket.OPEN && message.trim()) {
+                      if (
+                        ws.current?.readyState === WebSocket.OPEN &&
+                        message.trim()
+                      ) {
                         ws.current.send(message);
                         setMessage("");
                       }
