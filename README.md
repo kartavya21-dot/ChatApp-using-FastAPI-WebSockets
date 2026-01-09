@@ -162,9 +162,9 @@ VITE_WS_URL=wss://your-backend-url
 ---
 ## ⚠️ Screenshots
 
-* ![mainpage](screenshots/image.png)
-* ![chat](screenshots/image-1.png-1.png)
-* ![login/register page](screenshots/image-2.png)
+![mainpage](screenshots/image.png)
+![chat](screenshots/image-1.png)
+![login/register page](screenshots/image-2.png)
 ---
 
 ## ⚠️ Known Limitations
