@@ -7,7 +7,7 @@ This is a **hobby + learning project**, focused on backend correctness, WebSocke
 
 ---
 
-## 🧠 How WebSockets Work in Chatty
+## 🌐 Live links
 
 * Test it now: https://chat-app-using-fast-api-web-sockets.vercel.app/
 
