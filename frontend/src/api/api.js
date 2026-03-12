@@ -1,4 +1,5 @@
 import axios from "axios";
+import { logout } from "./auth";
 
 
 export const api = axios.create({
@@ -18,7 +19,7 @@ api.interceptors.response.use(
   async (error) => {
     const original = error.config;
 
-    if (error.response?.status === 401 && !original._retry) {
+    if (error.response?.status === 401 && !original._retry && !original.url.endsWith("/refresh")) {
       original._retry = true;
 
       const refreshToken = localStorage.getItem("refreshToken");

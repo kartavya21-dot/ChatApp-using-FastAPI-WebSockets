@@ -5,9 +5,9 @@ import Login from "./pages/Login";
 import { logout } from "./api/auth";
 
 function App() {
-  const logoutUser = async () => {
+  const logoutUser = () => {
     try {
-      await logout();
+      logout();
       window.location.reload();
     } catch (e) {
       alert("Failed to logout");

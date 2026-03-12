@@ -32,16 +32,24 @@ function Chat() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const ws = useRef(null);
   const messagesEndRef = useRef(null);
+  const [loadingConversation, setLoadingConversation] = useState(false);
+  const [loadingChat, setLoadingChat] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
 
   const handleConversationCreate = async (e) => {
     e.preventDefault();
+    if (!conversation.trim()) return;
+
+    setIsCreating(true); // Start loading
     try {
       await newConversation(conversation);
       setConversation("");
-      handleConversationList();
+      await handleConversationList();
     } catch (error) {
       console.error(error);
       alert("Cannot create conversation, Try Again!!");
+    } finally {
+      setIsCreating(false); // Stop loading
     }
   };
 
@@ -56,18 +64,20 @@ function Chat() {
   };
 
   const handleConversationList = async () => {
+    setLoadingConversation(true);
     try {
       const response = await getConversation();
       setConversations(response);
+      setLoadingConversation(false);
     } catch (error) {
       console.error(error);
       alert("Cannot find your chat list");
     }
   };
 
-  const logoutUser = async () => {
+  const logoutUser = () => {
     try {
-      await logout();
+      logout();
       window.location.reload();
     } catch (e) {
       alert("Cannot logout");
@@ -77,7 +87,7 @@ function Chat() {
   const deleteMessage = async (msg) => {
     const ok = window.confirm(
       "Are you sure you want to delete this message? ",
-      msg
+      msg,
     );
     if (!ok) return;
     try {
@@ -91,16 +101,16 @@ function Chat() {
 
   const getPreviousMessage = async (cid) => {
     if (!cid) return;
-
+    setLoadingChat(true);
     try {
       const response = await getMessages(cid);
       if (Array.isArray(response)) {
         console.log("API return an array:", response);
         setMessages(response);
       } else {
-        console.warn("API did not return an array:", response);
         setMessages([]);
       }
+      setLoadingChat(false);
     } catch (error) {
       console.error(error);
       setMessages([]);
@@ -122,14 +132,10 @@ function Chat() {
   }, [messages, selectedConversation]);
 
   useEffect(() => {
-    console.log("Selected Conver: ", selectedConversation);
-  }, [selectedConversation]);
-
-  useEffect(() => {
     if (!selectedConversation || !user) return;
 
     ws.current = new WebSocket(
-      `${WS_URL}/ws?_conversation_id=${selectedConversation?.id}&_user_id=${user.id}`
+      `${WS_URL}/ws?_conversation_id=${selectedConversation?.id}&_user_id=${user.id}`,
     );
 
     ws.current.onmessage = (event) => {
@@ -226,10 +232,14 @@ function Chat() {
               />
               <button
                 onClick={handleConversationCreate}
-                disabled={!conversation.trim()}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2 rounded-lg transition duration-200 shadow-sm"
+                disabled={!conversation.trim() || isCreating}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2 rounded-lg transition duration-200 shadow-sm disabled:opacity-70 flex items-center justify-center"
               >
-                Create Conversation
+                {isCreating ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  "Create Conversation"
+                )}
               </button>
             </div>
           </div>
@@ -243,34 +253,55 @@ function Chat() {
                   Conversations
                 </h2>
               </div>
-              <div className="space-y-2">
-                {conversations?.map((conv) => (
-                  <div
-                    key={conv.id}
-                    onClick={() => handleConversationSelect(conv)}
-                    className={`p-3 rounded-xl cursor-pointer transition-all duration-200 group ${
-                      selectedConversation?.id === conv.id
-                        ? "bg-indigo-50 text-indigo-700 shadow-sm ring-1 ring-indigo-200"
-                        : "hover:bg-gray-50 text-gray-700"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={`font-medium truncate ${
-                          selectedConversation?.id === conv.id
-                            ? "text-indigo-900"
-                            : "text-gray-900"
-                        }`}
-                      >
-                        {conv.name}
-                      </span>
-                      <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
-                        #{conv.id}
-                      </span>
+              {loadingConversation && (
+                <div className="space-y-2 animate-pulse">
+                  {[...Array(5)].map((_, index) => (
+                    <div
+                      key={index}
+                      className="p-3 rounded-xl bg-gray-50 border border-transparent"
+                    >
+                      <div className="flex items-center justify-between">
+                        {/* Mock Name Bar */}
+                        <div className="h-4 bg-gray-200 rounded-md w-1/2" />
+
+                        {/* Mock ID Bar */}
+                        <div className="h-3 bg-gray-200 rounded-md w-8 shrink-0 ml-2" />
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
+
+              {!loadingConversation && (
+                <div className="space-y-2">
+                  {conversations?.map((conv) => (
+                    <div
+                      key={conv.id}
+                      onClick={() => handleConversationSelect(conv)}
+                      className={`p-3 rounded-xl cursor-pointer transition-all duration-200 group ${
+                        selectedConversation?.id === conv.id
+                          ? "bg-indigo-50 text-indigo-700 shadow-sm ring-1 ring-indigo-200"
+                          : "hover:bg-gray-50 text-gray-700"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span
+                          className={`font-medium truncate ${
+                            selectedConversation?.id === conv.id
+                              ? "text-indigo-900"
+                              : "text-gray-900"
+                          }`}
+                        >
+                          {conv.name}
+                        </span>
+                        <span className="text-xs text-gray-500 shrink-0 ml-2">
+                          #{conv.id}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -294,77 +325,100 @@ function Chat() {
 
               {/* Messages Area */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 bg-gray-50">
-                {messages.map((msg, ind) => {
-                  const isCurrentUser = msg.user?.id === user?.id;
-                  return (
-                    <div
-                      key={msg.id || ind}
-                      className={`flex w-full ${
-                        isCurrentUser ? "justify-end" : "justify-start"
-                      }`}
-                    >
+                {loadingChat ? (
+                  /* MESSAGE SKELETON */
+                  <div className="space-y-6 animate-pulse">
+                    {[...Array(4)].map((_, i) => (
                       <div
-                        className={`flex max-w-[85%] sm:max-w-[70%] ${
-                          isCurrentUser ? "flex-row-reverse" : "flex-row"
-                        } items-end gap-2`}
+                        key={i}
+                        className={`flex ${i % 2 === 0 ? "justify-end" : "justify-start"}`}
                       >
-                        {/* Avatar */}
                         <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm flex-shrink-0 ${
-                            isCurrentUser
-                              ? "bg-indigo-600"
-                              : "bg-gradient-to-br from-purple-500 to-pink-500"
-                          }`}
+                          className={`flex items-end gap-2 max-w-[70%] ${i % 2 === 0 ? "flex-row-reverse" : "flex-row"}`}
                         >
-                          {msg.user?.name?.charAt(0).toUpperCase() || "?"}
-                        </div>
-
-                        <div
-                          className={`flex flex-col ${
-                            isCurrentUser ? "items-end" : "items-start"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 mb-1 px-1">
-                            <span className="text-xs font-medium text-gray-600">
-                              {isCurrentUser
-                                ? "You"
-                                : msg.user?.name || "Anonymous"}
-                            </span>
-                            <span className="text-[10px] text-gray-400">
-                              {msg.created_at
-                                ? new Date(
-                                    msg.created_at + "Z"
-                                  ).toLocaleTimeString([], {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })
-                                : ""}
-                            </span>
-                          </div>
-
-                          <div
-                            className={`group relative px-4 py-2.5 rounded-2xl shadow-sm text-sm sm:text-base break-words ${
-                              isCurrentUser
-                                ? "bg-indigo-600 text-white rounded-br-sm"
-                                : "bg-white text-gray-800 border border-gray-100 rounded-bl-sm"
-                            }`}
-                          >
-                            {msg.message}
-                            {isCurrentUser && (
-                              <button
-                                onClick={() => deleteMessage(msg)}
-                                className="absolute -left-8 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-500 transition-all"
-                                title="Delete message"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            )}
+                          <div className="w-8 h-8 rounded-full bg-gray-200 shrink-0" />
+                          <div className="flex flex-col gap-2">
+                            <div
+                              className={`h-10 w-32 sm:w-48 bg-gray-200 rounded-2xl ${i % 2 === 0 ? "rounded-br-sm" : "rounded-bl-sm"}`}
+                            />
                           </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    ))}
+                  </div>
+                ) : (
+                  messages.map((msg, ind) => {
+                    const isCurrentUser = msg.user?.id === user?.id;
+                    return (
+                      <div
+                        key={msg.id || ind}
+                        className={`flex w-full ${
+                          isCurrentUser ? "justify-end" : "justify-start"
+                        }`}
+                      >
+                        <div
+                          className={`flex max-w-[85%] sm:max-w-[70%] ${
+                            isCurrentUser ? "flex-row-reverse" : "flex-row"
+                          } items-end gap-2`}
+                        >
+                          {/* Avatar */}
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm flex-shrink-0 ${
+                              isCurrentUser
+                                ? "bg-indigo-600"
+                                : "bg-gradient-to-br from-purple-500 to-pink-500"
+                            }`}
+                          >
+                            {msg.user?.name?.charAt(0).toUpperCase() || "?"}
+                          </div>
+
+                          <div
+                            className={`flex flex-col ${
+                              isCurrentUser ? "items-end" : "items-start"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 mb-1 px-1">
+                              <span className="text-xs font-medium text-gray-600">
+                                {isCurrentUser
+                                  ? "You"
+                                  : msg.user?.name || "Anonymous"}
+                              </span>
+                              <span className="text-[10px] text-gray-400">
+                                {msg.created_at
+                                  ? new Date(
+                                      msg.created_at + "Z",
+                                    ).toLocaleTimeString([], {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })
+                                  : ""}
+                              </span>
+                            </div>
+
+                            <div
+                              className={`group relative px-4 py-2.5 rounded-2xl shadow-sm text-sm sm:text-base break-words ${
+                                isCurrentUser
+                                  ? "bg-indigo-600 text-white rounded-br-sm"
+                                  : "bg-white text-gray-800 border border-gray-100 rounded-bl-sm"
+                              }`}
+                            >
+                              {msg.message}
+                              {isCurrentUser && (
+                                <button
+                                  onClick={() => deleteMessage(msg)}
+                                  className="absolute -left-8 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-500 transition-all"
+                                  title="Delete message"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
                 <div ref={messagesEndRef} />
               </div>
 
